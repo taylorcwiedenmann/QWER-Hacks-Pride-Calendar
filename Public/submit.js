@@ -25,16 +25,21 @@ form.addEventListener('submit', function(e){
 
     const thisEvent = new Event(name, date, start_time, end_time, location, description);
 
-    fetch("/api/events/submit", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(thisEvent)
-    }); //push event to calender
+    //push event to calender
+    const response = fetch("/api/events/submit", {
+        method: "POST",
+        headers: {
+        "Content-Type": "application/json"
+        },
+        body: JSON.stringify(thisEvent)
+    }); 
+    
+    
 
-    console.log("Event created:", thisEvent);
-    document.body.innerHTML = `
+    
+    if(response.ok){
+        console.log("Event created:", thisEvent);
+        document.body.innerHTML = `
         <div style="text-align: center; padding: 50px;">
             <h1>✅ Event Submitted Successfully!</h1>
             <p>Thank you for submitting your pride event.</p>
@@ -42,6 +47,18 @@ form.addEventListener('submit', function(e){
             <a href="index.html">Go to Home</a>
         </div>
     `;
+    }
+    else{
+        console.log("Event creation failed");
+        document.body.innerHTML = `
+        <div style="text-align: center; padding: 50px;">
+            <h1>Event Submission Failed</h1>
+            <a href="submit.html">Submit Another Event</a> | 
+            <a href="index.html">Go to Home</a>
+        </div>
+    `;
+    }
+    
     form.reset();
 
 
