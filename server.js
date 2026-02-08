@@ -1,4 +1,3 @@
-
 require("dotenv").config();
 
 const cors = require('cors');
@@ -7,6 +6,7 @@ const path = require("path");
 const { google } = require("googleapis");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const { getPrideEvents } = require('./getPrideEvents'); // Only need this one import
 
 console.log("GOOGLE_KEYFILE:", process.env.GOOGLE_KEYFILE ? "Loaded" : "Not loaded");
 console.log("CALENDAR_ID:", process.env.CALENDAR_ID ? "Loaded" : "Not loaded");
@@ -47,7 +47,6 @@ function toPSTParts(dateTimeStr) {
   return { date, time };
 }
 
-
 async function insertToCalendar(eventToAdd) {
   const client = await auth.getClient();
   const calendar = google.calendar({ version: "v3", auth: client });
@@ -68,41 +67,54 @@ async function deleteFromCalendar(googleEventId) {
   });
 }
 
-async function getUpcomingEvents(limit = 3) {
-  try {
-    const now = new Date().toISOString();
-    const client = await auth.getClient();
-    const calendar = google.calendar({ version: "v3", auth: client });
-    
-    const res = await calendar.events.list({
-      calendarId: process.env.CALENDAR_ID,
-      timeMin: now,
-      maxResults: limit,
-      singleEvents: true,
-      orderBy: 'startTime',
+async function fetchUpcomingEvents({ days = 30 } = {}) {
+  const client = await auth.getClient();
+  const calendar = google.calendar({ version: "v3", auth: client });
+
+  const timeMin = new Date();
+  const timeMax = new Date();
+  timeMax.setDate(timeMax.getDate() + days);
+
+  const resp = await calendar.events.list({
+    calendarId: process.env.CALENDAR_ID,
+    timeMin: timeMin.toISOString(),
+    timeMax: timeMax.toISOString(),
+    singleEvents: true,
+    orderBy: "startTime",
+    maxResults: 250
+  });
+
+  return (resp.data.items || [])
+    .filter(ev => ev.start?.dateTime && ev.end?.dateTime)
+    .map(ev => {
+      const start = toPSTParts(ev.start.dateTime);
+      const end = toPSTParts(ev.end.dateTime);
+
+      return {
+        name: ev.summary || "(No title)",
+        location: ev.location || "",
+        description: ev.description || "",
+        date: start.date,
+        start_time: start.time,
+        end_time: end.time
+      };
     });
-
-    const events = res.data.items || [];
-
-    return events.map(event => ({
-      name: event.summary,
-      description: event.description || '',
-      date: event.start.date || event.start.dateTime,
-      start_time: event.start.dateTime,
-      end_time: event.end.dateTime,
-      location: event.location || '',
-      htmlLink: event.htmlLink
-    }));
-
-  } catch (error) {
-    console.error('Error fetching calendar events:', error);
-    throw error;
-  }
 }
 
 app.get("/ping", function (req, res) {
   res.send("ok");
 });
+
+// Eventbrite events endpoint
+app.get('/api/events/eventbrite', async (req, res) => {
+  try {
+    const events = await getPrideEvents();
+    res.json(events);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Submit event
 app.post("/api/events/submit", async function (req, res) {
   try {
@@ -145,60 +157,108 @@ app.post("/api/events/submit", async function (req, res) {
   }
 });
 
-// submit -> directly creates event on Google Calendar
-app.post("/api/events/submit", async function (req, res) {
+
+// Sync Eventbrite events to Google Calendar
+app.post('/api/events/sync-eventbrite', async (req, res) => {
   try {
-    const title = req.body.name;
-    const description = req.body.description;
-    const location = req.body.location;
-    const start_time = req.body.start_time;
-    const end_time = req.body.end_time;
-    const date = req.body.date;
-    const start = `${date}T${start_time}:00`;
-    const end = `${date}T${end_time}:00`;
-
-    // basic validation & sanitization
-    if (!title || !start || !end) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "title, start, and end required" });
+    const prideEvents = await getPrideEvents();
+    console.log(`Found ${prideEvents.length} pride events to sync`);
+    
+    if (prideEvents.length > 0) {
+      console.log('First event:', JSON.stringify(prideEvents[0], null, 2));
     }
-
-    if (title.length > 200) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "title too long" });
+    
+    const addedEvents = [];
+    
+    for (const event of prideEvents) {
+      const eventDateTime = parseEventDateTime(event.date, event.start_time);
+      
+      console.log(`Event: ${event.name}`);
+      console.log(`  Date: "${event.date}", Time: "${event.start_time}"`);
+      console.log(`  Parsed:`, eventDateTime);
+      
+      if (!eventDateTime) {
+        console.log(`  ❌ Skipping (invalid date)`);
+        continue;
+      }
+      
+      // Create the calendar event resource
+      const eventResource = {
+        summary: event.name,
+        description: event.description || '',
+        location: event.location || '',
+        start: { dateTime: eventDateTime.start },
+        end: { dateTime: eventDateTime.end }
+      };
+      
+      try {
+        const gEvent = await insertToCalendar(eventResource);
+        console.log(`  ✅ Added: ${event.name}`);
+        addedEvents.push(gEvent);
+      } catch (err) {
+        console.error(`  ❌ Failed to add ${event.name}:`, err.message);
+      }
     }
-
-    // build Google event resource
-    const eventResource = {
-      summary: title,
-      description: description || "",
-      location: location || "",
-      start: { dateTime: new Date(start).toISOString() },
-      end: { dateTime: new Date(end).toISOString() }
-    };
-
-    // Insert
-    const gEvent = await insertToCalendar(eventResource);
-
-    // Log the google event id (server logs) so admin can delete if needed
-    console.log("Created Google event:", gEvent.id, gEvent.htmlLink);
-
-    // Return event id to caller
-    res.json({
-      ok: true,
-      googleEventId: gEvent.id,
-      htmlLink: gEvent.htmlLink
+    
+    res.json({ 
+      ok: true, 
+      synced: addedEvents.length,
+      total: prideEvents.length 
     });
-  } catch (err) {
-    console.error("Insert error:", err && err.message ? err.message : err);
-    res
-      .status(500)
-      .json({ ok: false, error: "failed to create event" });
+    
+  } catch (error) {
+    console.error('Sync error:', error);
+    res.status(500).json({ ok: false, error: error.message });
   }
 });
-
+// Helper function to parse Eventbrite date/time
+function parseEventDateTime(dateStr, timeStr) {
+  try {
+    // Handle "Sun, Feb 15" format
+    const currentYear = new Date().getFullYear();
+    
+    // Parse the date parts
+    const months = {
+      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+      'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+    };
+    
+    // Extract month and day from "Sun, Feb 15"
+    const parts = dateStr.replace(',', '').split(' ');
+    const month = months[parts[1]];
+    const day = parseInt(parts[2]);
+    
+    if (month === undefined || !day) return null;
+    
+    // Parse time "9:00 PM"
+    let hour = 0;
+    let minute = 0;
+    
+    if (timeStr) {
+      const timeParts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (timeParts) {
+        hour = parseInt(timeParts[1]);
+        minute = parseInt(timeParts[2]);
+        const isPM = timeParts[3].toUpperCase() === 'PM';
+        
+        if (isPM && hour !== 12) hour += 12;
+        if (!isPM && hour === 12) hour = 0;
+      }
+    }
+    
+    const start = new Date(currentYear, month, day, hour, minute);
+    const end = new Date(start);
+    end.setHours(end.getHours() + 2); // 2-hour default duration
+    
+    return {
+      start: start.toISOString(),
+      end: end.toISOString()
+    };
+  } catch (err) {
+    console.error('Date parse error:', err);
+    return null;
+  }
+}
 // admin-only: delete event by Google event id
 app.post("/api/admin/delete", async (req, res) => {
   const token = req.get("x-admin-token");
@@ -218,40 +278,6 @@ app.post("/api/admin/delete", async (req, res) => {
     res.status(500).json({ ok: false, error: "failed to delete event" });
   }
 });
-
-async function fetchUpcomingEvents({ days = 30 } = {}) {
-  const client = await auth.getClient();
-  const calendar = google.calendar({ version: "v3", auth: client });
-
-  const timeMin = new Date();
-  const timeMax = new Date();
-  timeMax.setDate(timeMax.getDate() + days);
-
-  const resp = await calendar.events.list({
-    calendarId: process.env.CALENDAR_ID,
-    timeMin: timeMin.toISOString(),
-    timeMax: timeMax.toISOString(),
-    singleEvents: true,
-    orderBy: "startTime",
-    maxResults: 250
-  });
-
-  return (resp.data.items || [])
-    .filter(ev => ev.start?.dateTime && ev.end?.dateTime)
-    .map(ev => {
-      const start = toPSTParts(ev.start.dateTime);
-      const end = toPSTParts(ev.end.dateTime);
-
-      return {
-        name: ev.summary || "(No title)",
-        location: ev.location || "",
-        description: ev.description || "",
-        date: start.date,
-        start_time: start.time,
-        end_time: end.time
-      };
-    });
-}
 
 app.get("/api/events/upcoming", async (req, res) => {
   try {
@@ -281,7 +307,7 @@ app.post("/api/assistant/recommend", async (req, res) => {
     }
 
     const events = await fetchUpcomingEvents({ days: 30 });
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
     const prompt = `
 You are an event recommendation assistant. Your ONLY job is to:
@@ -350,7 +376,6 @@ Rules:
     res.status(500).json({ ok: false, error: "assistant failed" });
   }
 });
-
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

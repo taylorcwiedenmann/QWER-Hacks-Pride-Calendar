@@ -67,3 +67,24 @@ function displayEvents(events) {
 
 // Load events when page loads
 document.addEventListener('DOMContentLoaded', fetchUpcomingEvents);
+// In your frontend JavaScript file
+async function loadEventbriteEvents() {
+  try {
+    const response = await fetch('/api/events/eventbrite');
+    const events = await response.json();
+    
+    // Display events on your page
+    console.log('Pride events from Eventbrite:', events);
+    
+    // Example: add to your calendar display
+    events.forEach(event => {
+      displayEvent(event); // Your existing function to show events
+    });
+    
+  } catch (error) {
+    console.error('Error loading Eventbrite events:', error);
+  }
+}
+
+// Call it when page loads
+loadEventbriteEvents();
