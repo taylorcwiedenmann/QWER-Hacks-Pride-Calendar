@@ -157,18 +157,34 @@ h2{
     margin-left: 20px;
 }
 
-button{
+button {
     background-color: black;
     color: white;
     border: none;
     padding: 10px 20px;
     border-radius: 5px;
     cursor: pointer;
-    font-family:Verdana, Geneva, Tahoma, sans-serif
-    
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+#submit-event {
+  position: relative;
+  top: -30px;
+  left: 20px;
+}
+
+#chat-send {
+  position: relative;
+  top: 0px;
+  left: 0px;
+  /* padding: 10px; */
+}
+#chat-input{
+  width: 230px;
+  padding: 10px;
+  /* border: 2px solid #ccc; */
+  border-radius: 5px;
 }
 button:hover{
-    
     background-image: url("RainbowWide.png");
     background-repeat: repeat-x;
     background-size: 250px 100%;
@@ -181,6 +197,7 @@ button:hover{
 }
 .calendar-container {
             display: flex;
+            padding-left: 20px;
             gap: 20px;
             align-items: flex-start;
         }
@@ -238,4 +255,19 @@ input, textarea{
 #event-dsescription{
     width: 100%;
     resize:none !important;
+}
+
+.curve-banner {
+  padding-top: 20px;
+  position: relative;
+  left: -300px;
+  width: 150%;
+  height: 160px;
+  display: block;
+}
+
+.curve-text {
+  font-family: "Playfair", serif;
+  font-size: 48px;   /* makes it much bigger */
+  fill: white;
 }
