@@ -49,11 +49,13 @@ form.addEventListener('submit', async function(e){
     `;
     }
     else{
-        console.log("Event creation failed");
+        const errorData = await response.json();
+        console.error("Event creation failed:", errorData.error);
         document.body.innerHTML = `
         <div style="text-align: center; padding: 50px;">
-            <h1>Event Submission Failed</h1>
-            <a href="submit.html">Submit Another Event</a> | 
+            <h1>❌ Event Submission Failed</h1>
+            <p>Error: ${errorData.error || "Unknown error"}</p>
+            <a href="submit.html">Submit Another Event</a> |
             <a href="index.html">Go to Home</a>
         </div>
     `;
