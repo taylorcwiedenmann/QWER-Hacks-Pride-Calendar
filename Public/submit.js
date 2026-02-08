@@ -13,7 +13,7 @@ class Event{
 const form = document.getElementById("event-form");
 //const message = document.getElementById("message");
 
-form.addEventListener('submit', function(e){
+form.addEventListener('submit', async function(e){
     e.preventDefault(); 
 
     const name = document.getElementById("event-name").value;
@@ -26,7 +26,7 @@ form.addEventListener('submit', function(e){
     const thisEvent = new Event(name, date, start_time, end_time, location, description);
 
     //push event to calender
-    const response = fetch("/api/events/submit", {
+    const response = await fetch("/api/events/submit", {
         method: "POST",
         headers: {
         "Content-Type": "application/json"
