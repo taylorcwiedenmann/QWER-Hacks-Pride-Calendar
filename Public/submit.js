@@ -24,6 +24,15 @@ form.addEventListener('submit', function(e){
     const description = document.getElementById("event-description").value
 
     const thisEvent = new Event(name, date, start_time, end_time, location, description);
+
+    fetch("/api/events/submit", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(thisEvent)
+    }); //push event to calender
+
     console.log("Event created:", thisEvent);
     document.body.innerHTML = `
         <div style="text-align: center; padding: 50px;">
@@ -34,6 +43,8 @@ form.addEventListener('submit', function(e){
         </div>
     `;
     form.reset();
+
+
 });
 
 
