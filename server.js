@@ -1,4 +1,3 @@
-
 require("dotenv").config();
 
 const cors = require('cors');
@@ -7,6 +6,7 @@ const path = require("path");
 const { google } = require("googleapis");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const { getPrideEvents } = require('./getPrideEvents'); // Only need this one import
 
 console.log("GOOGLE_KEYFILE:", process.env.GOOGLE_KEYFILE ? "Loaded" : "Not loaded");
 console.log("CALENDAR_ID:", process.env.CALENDAR_ID ? "Loaded" : "Not loaded");
@@ -47,7 +47,6 @@ function toPSTParts(dateTimeStr) {
   return { date, time };
 }
 
-
 async function insertToCalendar(eventToAdd) {
   const client = await auth.getClient();
   const calendar = google.calendar({ version: "v3", auth: client });
@@ -68,10 +67,52 @@ async function deleteFromCalendar(googleEventId) {
   });
 }
 
+async function getUpcomingEvents(limit = 3) {
+  try {
+    const now = new Date().toISOString();
+    const client = await auth.getClient();
+    const calendar = google.calendar({ version: "v3", auth: client });
+    
+    const res = await calendar.events.list({
+      calendarId: process.env.CALENDAR_ID,
+      timeMin: now,
+      maxResults: limit,
+      singleEvents: true,
+      orderBy: 'startTime',
+    });
+
+    const events = res.data.items || [];
+
+    return events.map(event => ({
+      name: event.summary,
+      description: event.description || '',
+      date: event.start.date || event.start.dateTime,
+      start_time: event.start.dateTime,
+      end_time: event.end.dateTime,
+      location: event.location || '',
+      htmlLink: event.htmlLink
+    }));
+
+  } catch (error) {
+    console.error('Error fetching calendar events:', error);
+    throw error;
+  }
+}
 
 app.get("/ping", function (req, res) {
   res.send("ok");
 });
+
+// Eventbrite events endpoint
+app.get('/api/events/eventbrite', async (req, res) => {
+  try {
+    const events = await getPrideEvents();
+    res.json(events);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Submit event
 app.post("/api/events/submit", async function (req, res) {
   try {
@@ -134,40 +175,6 @@ app.post("/api/admin/delete", async (req, res) => {
   }
 });
 
-async function fetchUpcomingEvents({ days = 30 } = {}) {
-  const client = await auth.getClient();
-  const calendar = google.calendar({ version: "v3", auth: client });
-
-  const timeMin = new Date();
-  const timeMax = new Date();
-  timeMax.setDate(timeMax.getDate() + days);
-
-  const resp = await calendar.events.list({
-    calendarId: process.env.CALENDAR_ID,
-    timeMin: timeMin.toISOString(),
-    timeMax: timeMax.toISOString(),
-    singleEvents: true,
-    orderBy: "startTime",
-    maxResults: 250
-  });
-
-  return (resp.data.items || [])
-    .filter(ev => ev.start?.dateTime && ev.end?.dateTime)
-    .map(ev => {
-      const start = toPSTParts(ev.start.dateTime);
-      const end = toPSTParts(ev.end.dateTime);
-
-      return {
-        name: ev.summary || "(No title)",
-        location: ev.location || "",
-        description: ev.description || "",
-        date: start.date,
-        start_time: start.time,
-        end_time: end.time
-      };
-    });
-}
-
 app.get("/api/events/upcoming", async (req, res) => {
   try {
     const days = Math.min(parseInt(req.query.days || "30", 10), 180);
@@ -196,7 +203,7 @@ app.post("/api/assistant/recommend", async (req, res) => {
     }
 
     const events = await fetchUpcomingEvents({ days: 30 });
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
     const prompt = `
 You are an event recommendation assistant. Your ONLY job is to:
@@ -265,7 +272,6 @@ Rules:
     res.status(500).json({ ok: false, error: "assistant failed" });
   }
 });
-
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
