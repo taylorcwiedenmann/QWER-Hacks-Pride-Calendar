@@ -42,7 +42,8 @@ body {
 .nav-links a {
   line-height: 1;      
   padding: 6px 0;
-  font-family: "Garamond", serif;
+  font-family:Verdana, Geneva, Tahoma, sans-serif;
+  font-weight: bold;
   color: rgb(255, 255, 255);
   text-decoration: none;
   font-size: 18px;
@@ -132,4 +133,98 @@ body {
 @keyframes rainbowMove {
   from { background-position: 0 50%; }
   to   { background-position: 250px 50%; }
+}
+
+.event-card{
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    margin-left: 20px;
+    margin-right: 20px;
+}
+
+h2{
+    margin-left: 20px;
+}
+
+button{
+    background-color: black;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family:Verdana, Geneva, Tahoma, sans-serif
+    
+}
+button:hover{
+    
+    background-image: url("RainbowWide.png");
+    background-repeat: repeat-x;
+    background-size: 250px 100%;
+    animation: rainbowMove 1s linear infinite;
+    background-color: transparent;
+    color: black;
+    border: 2px solid white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    
+}
+.calendar-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        #calendar {
+            flex: 1;
+        }
+
+        #chat {
+            flex: 0 0 350px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat-log {
+            min-height: 400px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+
+        @media (max-width: 1024px) {
+            .calendar-container {
+                flex-direction: column;
+            }
+
+            #chat {
+                flex: 1;
+                width: 100%;
+            }
+        }
+
+.enter-field {
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    margin-left: 20px;
+    margin-right: 20px;
+    max-width: 300px;
+}
+input, textarea{
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    
+}
+
+#event-dsescription{
+    width: 100%;
+    resize:none !important;
 }

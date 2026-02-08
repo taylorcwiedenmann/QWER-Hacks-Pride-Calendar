@@ -8,6 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calendar - Pride Events</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        
+    </style>
 </head>
 <body>
      <nav>
@@ -24,26 +27,27 @@
 
     <main>
         <h2>Upcoming Pride Events</h2>
-        <div id="calendar">
-            <iframe 
-  src="https://calendar.google.com/calendar/embed?src=a7611588aff40c850452a5e9d60af5d3fddee0cfaec13f5c00b6e5ca11c1e367%40group.calendar.google.com" 
-  style="border: 0" 
-  width="800" 
-  height="600" 
-  frameborder="0" 
-  scrolling="no">
-</iframe>
-        </div>
-
-         <section id="chat">
-            <h2>Ask for Event Ideas</h2>
-            <div id="chat-log"></div>
-            <div style="display: flex;">
-                <input id="chat-input" type="text" placeholder="e.g., 'Show me events this weekend'">
-                <button id="chat-send">Send</button>
+        <div class="calendar-container">
+            <div id="calendar">
+                <iframe 
+      src="https://calendar.google.com/calendar/embed?src=a7611588aff40c850452a5e9d60af5d3fddee0cfaec13f5c00b6e5ca11c1e367%40group.calendar.google.com" 
+      style="border: 0" 
+      width="100%" 
+      height="600" 
+      frameborder="0" 
+      scrolling="no">
+    </iframe>
             </div>
-        </section>
 
+            <section id="chat">
+                <h2>Ask for Event Ideas</h2>
+                <div id="chat-log"></div>
+                <div style="display: flex;">
+                    <input id="chat-input" type="text" placeholder="e.g., 'Show me events this weekend'">
+                    <button id="chat-send">Send</button>
+                </div>
+            </section>
+        </div>
     </main>
 
     <script src="calendar.js"></script>
