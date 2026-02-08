@@ -21,6 +21,29 @@ const auth = new google.auth.GoogleAuth({
   scopes: ["https://www.googleapis.com/auth/calendar"]
 });
 
+const PST_TIMEZONE = "America/Los_Angeles";
+
+function toPSTParts(dateTimeStr) {
+  const d = new Date(dateTimeStr);
+
+  const date = new Intl.DateTimeFormat("en-CA", {
+    timeZone: PST_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(d); // YYYY-MM-DD
+
+  const time = new Intl.DateTimeFormat("en-GB", {
+    timeZone: PST_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(d); // HH:MM (24h)
+
+  return { date, time };
+}
+
+
 async function insertToCalendar(eventToAdd) {
   const client = await auth.getClient();
   const calendar = google.calendar({ version: "v3", auth: client });
@@ -119,6 +142,51 @@ app.post("/api/admin/delete", async (req, res) => {
     res.status(500).json({ ok: false, error: "failed to delete event" });
   }
 });
+
+app.get("/api/events/upcoming", async (req, res) => {
+  try {
+    const client = await auth.getClient();
+    const calendar = google.calendar({ version: "v3", auth: client });
+
+    const days = Math.min(parseInt(req.query.days || "30", 10), 180);
+
+    const timeMin = new Date(); // now
+    const timeMax = new Date();
+    timeMax.setDate(timeMax.getDate() + days);
+
+    const resp = await calendar.events.list({
+      calendarId: process.env.CALENDAR_ID,
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: true,      // expand recurring events
+      orderBy: "startTime",
+      maxResults: 250
+    });
+
+    const items = (resp.data.items || [])
+  .filter(ev => ev.start?.dateTime && ev.end?.dateTime)
+  .map(ev => {
+    const start = toPSTParts(ev.start.dateTime);
+    const end = toPSTParts(ev.end.dateTime);
+
+    return {
+      name: ev.summary || "(No title)",
+      location: ev.location || "",
+      description: ev.description || "",
+      date: start.date,
+      start_time: start.time,
+      end_time: end.time
+    };
+  });
+
+
+    res.json({ ok: true, events: items });
+  } catch (err) {
+    console.error("List events error:", err?.message || err);
+    res.status(500).json({ ok: false, error: "failed to fetch events" });
+  }
+});
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
