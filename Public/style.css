@@ -8,13 +8,17 @@
     /* background-image: url("TitleBack.png");  */
     /* background-size: cover; 
     background-position: center;  */
-    background-attachment: fixed; gap: 40px;
     gap: 40px;
+    align-items: center;
+    padding: 20px 10px 10px;
+    background-color: black;
 }
 html{
     font-family:Verdana, Geneva, Tahoma, sans-serif
 }
 html, body {
+   margin: 0;
+  padding: 0;
   height: 100%;
 }
 body {
@@ -31,7 +35,12 @@ body {
   font-style: italic;
   font-variation-settings:"wdth" 100;
   color:rgb(255, 255, 255);
-  font-size: 50px;
+  font-size: 60px;
+  position: relative;
+  top: 8px;
+}
+.nav-links a:first-of-type {
+  margin-left: auto;
 }
 .nav-links a {
   line-height: 1;      
@@ -40,7 +49,7 @@ body {
   color: rgb(255, 255, 255);
   text-decoration: none;
   font-size: 18px;
-  margin-left: auto;
+  margin-top: 35px;
 }
 .nav-links h1{
   margin: 0;            
