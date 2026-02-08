@@ -45,11 +45,14 @@ app.get("/ping", function (req, res) {
 // submit -> directly creates event on Google Calendar
 app.post("/api/events/submit", async function (req, res) {
   try {
-    const title = req.body.title;
+    const title = req.body.name;
     const description = req.body.description;
     const location = req.body.location;
-    const start = req.body.start;
-    const end = req.body.end;
+    const start_time = req.body.start_time;
+    const end_time = req.body.end_time;
+    const date = req.body.date;
+    const start = `${date}T${start_time}:00`;
+    const end = `${date}T${end_time}:00`;
 
     // basic validation & sanitization
     if (!title || !start || !end) {
