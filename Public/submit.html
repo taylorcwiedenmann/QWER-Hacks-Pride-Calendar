@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit an Event - Pride Events</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <h1>🏳️‍🌈 Pride Events</h1>
+        <div class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="calendar.html">Calendar</a>
+            <a href="submit.html">Submit Event</a>
+        </div>
+    </nav>
+
+    <main>
+        <h2>Submit a Pride Event</h2>
+        <form id="event-form">
+            <label>Event Name:</label>
+            <br></br>
+            <input type="text" id="event-name" required>
+            <br></br>
+
+            <label>Date:</label>
+            <br></br>
+            <input type="date" id="event-date" required>
+            <br></br>
+
+            <label>Start Time:</label>
+            <br></br>
+            <input type="time" id="event-start-time" required>
+            <br></br>
+
+            <label>End Time:</label>
+            <br></br>
+            <input type="time" id="event-end-time" required>
+            <br></br>
+
+            <label>Location/Address:</label>
+            <br></br>
+            <input type="text" id="event-location" required>
+            <br></br>
+
+            <label>Description:</label>
+            <br></br>
+            <textarea id="event-description" rows="4" ></textarea>
+
+            <button type="submit">Submit Event</button>
+        </form>
+        <div id="message"></div>
+    </main>
+
+    <script src="submit.js"></script>
+</body>
+</html>
