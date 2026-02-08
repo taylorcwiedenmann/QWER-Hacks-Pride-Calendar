@@ -145,47 +145,131 @@ app.post("/api/admin/delete", async (req, res) => {
   }
 });
 
-app.get("/api/events/upcoming", async (req, res) => {
-  try {
-    const client = await auth.getClient();
-    const calendar = google.calendar({ version: "v3", auth: client });
+async function fetchUpcomingEvents({ days = 30 } = {}) {
+  const client = await auth.getClient();
+  const calendar = google.calendar({ version: "v3", auth: client });
 
-    const days = Math.min(parseInt(req.query.days || "30", 10), 180);
+  const timeMin = new Date();
+  const timeMax = new Date();
+  timeMax.setDate(timeMax.getDate() + days);
 
-    const timeMin = new Date(); // now
-    const timeMax = new Date();
-    timeMax.setDate(timeMax.getDate() + days);
-
-    const resp = await calendar.events.list({
-      calendarId: process.env.CALENDAR_ID,
-      timeMin: timeMin.toISOString(),
-      timeMax: timeMax.toISOString(),
-      singleEvents: true,      // expand recurring events
-      orderBy: "startTime",
-      maxResults: 250
-    });
-
-    const items = (resp.data.items || [])
-  .filter(ev => ev.start?.dateTime && ev.end?.dateTime)
-  .map(ev => {
-    const start = toPSTParts(ev.start.dateTime);
-    const end = toPSTParts(ev.end.dateTime);
-
-    return {
-      name: ev.summary || "(No title)",
-      location: ev.location || "",
-      description: ev.description || "",
-      date: start.date,
-      start_time: start.time,
-      end_time: end.time
-    };
+  const resp = await calendar.events.list({
+    calendarId: process.env.CALENDAR_ID,
+    timeMin: timeMin.toISOString(),
+    timeMax: timeMax.toISOString(),
+    singleEvents: true,
+    orderBy: "startTime",
+    maxResults: 250
   });
 
+  return (resp.data.items || [])
+    .filter(ev => ev.start?.dateTime && ev.end?.dateTime)
+    .map(ev => {
+      const start = toPSTParts(ev.start.dateTime);
+      const end = toPSTParts(ev.end.dateTime);
 
-    res.json({ ok: true, events: items });
+      return {
+        name: ev.summary || "(No title)",
+        location: ev.location || "",
+        description: ev.description || "",
+        date: start.date,
+        start_time: start.time,
+        end_time: end.time
+      };
+    });
+}
+
+app.get("/api/events/upcoming", async (req, res) => {
+  try {
+    const days = Math.min(parseInt(req.query.days || "30", 10), 180);
+    const events = await fetchUpcomingEvents({ days });
+
+    res.json({ ok: true, events });
   } catch (err) {
     console.error("List events error:", err?.message || err);
     res.status(500).json({ ok: false, error: "failed to fetch events" });
+  }
+});
+
+app.post("/api/assistant/recommend", async (req, res) => {
+  try {
+    const message = (req.body?.message || "").trim();
+    if (!message) {
+      return res.status(400).json({ ok: false, error: "message required" });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ ok: false, error: "GEMINI_API_KEY not set" });
+    }
+
+    const events = await fetchUpcomingEvents({ days: 30 });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `
+You are an event recommendation assistant. Your ONLY job is to:
+1. Recommend events from the provided list when users ask for suggestions
+2. Respond politely to greetings, thanks, or casual chat (1-2 sentences max)
+3. Decline ANY other requests (editing papers, creating content, general questions, etc.)
+
+User message: ${message}
+
+Events available (JSON):
+${JSON.stringify(events)}
+
+INSTRUCTIONS:
+- If this is a greeting/thanks/casual chat: Respond with {"type": "chat", "message": "your brief response"}
+- If asking for event recommendations: Return {"type": "recommendations", "recommendations": [...]}
+- If asking for anything else (homework help, editing, general questions): Return {"type": "declined", "message": "I can only help with event recommendations from our calendar. Is there an event you'd like to find?"}
+
+Response format for recommendations:
+{
+  "type": "recommendations",
+  "recommendations": [
+    {
+      "name": string,
+      "date": "YYYY-MM-DD",
+      "start_time": "HH:MM",
+      "end_time": "HH:MM",
+      "location": string,
+      "reason": string
+    }
+  ]
+}
+
+Rules:
+- Pick up to 5 events max
+- Do NOT invent events
+- If no events match: return empty recommendations array
+- Keep chat responses under 15 words
+`;
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim();
+
+    const cleaned = text
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```$/i, "")
+      .trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      return res.status(500).json({ ok: false, error: "AI returned non-JSON", raw: text });
+    }
+
+    // Handle different response types
+    if (parsed.type === "chat") {
+      res.json({ ok: true, type: "chat", message: parsed.message });
+    } else if (parsed.type === "declined") {
+      res.json({ ok: true, type: "declined", message: parsed.message });
+    } else {
+      res.json({ ok: true, type: "recommendations", recommendations: parsed.recommendations || [] });
+    }
+  } catch (err) {
+    console.error("assistant error:", err?.message || err);
+    res.status(500).json({ ok: false, error: "assistant failed" });
   }
 });
 
