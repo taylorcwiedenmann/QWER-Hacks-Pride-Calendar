@@ -155,6 +155,108 @@ app.post("/api/events/submit", async function (req, res) {
   }
 });
 
+
+// Sync Eventbrite events to Google Calendar
+app.post('/api/events/sync-eventbrite', async (req, res) => {
+  try {
+    const prideEvents = await getPrideEvents();
+    console.log(`Found ${prideEvents.length} pride events to sync`);
+    
+    if (prideEvents.length > 0) {
+      console.log('First event:', JSON.stringify(prideEvents[0], null, 2));
+    }
+    
+    const addedEvents = [];
+    
+    for (const event of prideEvents) {
+      const eventDateTime = parseEventDateTime(event.date, event.start_time);
+      
+      console.log(`Event: ${event.name}`);
+      console.log(`  Date: "${event.date}", Time: "${event.start_time}"`);
+      console.log(`  Parsed:`, eventDateTime);
+      
+      if (!eventDateTime) {
+        console.log(`  ❌ Skipping (invalid date)`);
+        continue;
+      }
+      
+      // Create the calendar event resource
+      const eventResource = {
+        summary: event.name,
+        description: event.description || '',
+        location: event.location || '',
+        start: { dateTime: eventDateTime.start },
+        end: { dateTime: eventDateTime.end }
+      };
+      
+      try {
+        const gEvent = await insertToCalendar(eventResource);
+        console.log(`  ✅ Added: ${event.name}`);
+        addedEvents.push(gEvent);
+      } catch (err) {
+        console.error(`  ❌ Failed to add ${event.name}:`, err.message);
+      }
+    }
+    
+    res.json({ 
+      ok: true, 
+      synced: addedEvents.length,
+      total: prideEvents.length 
+    });
+    
+  } catch (error) {
+    console.error('Sync error:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+// Helper function to parse Eventbrite date/time
+function parseEventDateTime(dateStr, timeStr) {
+  try {
+    // Handle "Sun, Feb 15" format
+    const currentYear = new Date().getFullYear();
+    
+    // Parse the date parts
+    const months = {
+      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+      'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+    };
+    
+    // Extract month and day from "Sun, Feb 15"
+    const parts = dateStr.replace(',', '').split(' ');
+    const month = months[parts[1]];
+    const day = parseInt(parts[2]);
+    
+    if (month === undefined || !day) return null;
+    
+    // Parse time "9:00 PM"
+    let hour = 0;
+    let minute = 0;
+    
+    if (timeStr) {
+      const timeParts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (timeParts) {
+        hour = parseInt(timeParts[1]);
+        minute = parseInt(timeParts[2]);
+        const isPM = timeParts[3].toUpperCase() === 'PM';
+        
+        if (isPM && hour !== 12) hour += 12;
+        if (!isPM && hour === 12) hour = 0;
+      }
+    }
+    
+    const start = new Date(currentYear, month, day, hour, minute);
+    const end = new Date(start);
+    end.setHours(end.getHours() + 2); // 2-hour default duration
+    
+    return {
+      start: start.toISOString(),
+      end: end.toISOString()
+    };
+  } catch (err) {
+    console.error('Date parse error:', err);
+    return null;
+  }
+}
 // admin-only: delete event by Google event id
 app.post("/api/admin/delete", async (req, res) => {
   const token = req.get("x-admin-token");
