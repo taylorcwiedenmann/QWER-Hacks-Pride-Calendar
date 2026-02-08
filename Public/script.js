@@ -58,8 +58,8 @@ function displayEvents(events) {
     <div class="event-card">
       <h3>${event.name}</h3>
       <p>${event.description}</p>
-      <p>📅 ${new Date(event.date).toLocaleDateString()}</p>
-      ${event.start_time ? `<p>🕐 ${new Date(event.start_time).toLocaleTimeString()}</p>` : ''}
+      <p>📅 ${event.date}</p>
+      <p>🕐 ${event.start_time} - ${event.end_time}</p>
       ${event.location ? `<p>📍 ${event.location}</p>` : ''}
     </div>
   `).join('');

@@ -256,9 +256,13 @@ async function fetchUpcomingEvents({ days = 30 } = {}) {
 app.get("/api/events/upcoming", async (req, res) => {
   try {
     const days = Math.min(parseInt(req.query.days || "30", 10), 180);
+    const limit = parseInt(req.query.limit || "3", 10);
     const events = await fetchUpcomingEvents({ days });
 
-    res.json({ ok: true, events });
+    const limitedEvents = events.slice(0, limit);
+
+    res.json({ ok: true, events: limitedEvents });
+
   } catch (err) {
     console.error("List events error:", err?.message || err);
     res.status(500).json({ ok: false, error: "failed to fetch events" });
