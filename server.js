@@ -4,6 +4,10 @@ const express = require("express");
 const path = require("path");
 const { google } = require("googleapis");
 
+console.log("GOOGLE_KEYFILE:", process.env.GOOGLE_KEYFILE ? "Loaded" : "Not loaded");
+console.log("CALENDAR_ID:", process.env.CALENDAR_ID ? "Loaded" : "Not loaded");
+console.log("ADMIN_TOKEN:", process.env.ADMIN_TOKEN ? "Loaded" : "Not loaded");
+
 const app = express();
 
 app.use(express.json());
