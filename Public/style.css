@@ -5,9 +5,6 @@
     padding-top: 20px;
     padding-right: 10px;
     list-style-type: none; 
-    /* background-image: url("TitleBack.png");  */
-    /* background-size: cover; 
-    background-position: center;  */
     gap: 40px;
     align-items: center;
     padding: 20px 10px 10px;
@@ -62,4 +59,77 @@ body {
 }
 .event-form{
     margin-left: 20px;
+}
+
+/* potential additions: */
+
+.title c {
+  display: inline-block;
+  font-weight: inherit;
+  color: white;
+  transition: all 0.3s ease;
+}
+.logo {
+  height: 45px;   /* change this number to resize */
+  width: auto;
+  position: relative;
+  padding-bottom: 8px;
+  top: 11px;
+}
+/* Title rainbow on hover */
+.title:hover b {
+  background-image: url("RainbowWide.png");
+  background-repeat: repeat-x;
+  background-size: 250px 100%;
+  animation: rainbowMove 1s linear infinite;
+
+
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+
+/* Nav link rainbow hover */
+.nav-links a:hover {
+  background-image: url("RainbowWide.png");
+  background-repeat: repeat-x;
+  background-size: 250px 100%;
+  animation: rainbowMove 1s linear infinite;
+
+
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+
+/* Animated underline */
+.nav-links a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 100%;
+  height: 2px;
+  background: white;
+
+
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+
+.nav-links a:hover::after {
+  transform: scaleX(1);
+}
+
+
+/* Rainbow animation */
+@keyframes rainbowMove {
+  from { background-position: 0 50%; }
+  to   { background-position: 250px 50%; }
 }
