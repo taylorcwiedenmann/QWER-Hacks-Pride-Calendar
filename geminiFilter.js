@@ -2,7 +2,8 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 async function filterPrideEvents(events, geminiApiKey) {
   const genAI = new GoogleGenerativeAI(geminiApiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  // FIXED: Changed from gemini-2.5-flash to gemini-2.0-flash
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
   
   const prompt = `
 Filter these events to find LGBTQ+ and Pride-related events.
