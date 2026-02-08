@@ -8,7 +8,7 @@
     gap: 40px;
     align-items: center;
     padding: 20px 10px 10px;
-    background-color: black;
+    background-color: rgb(0, 0, 0);
 }
 html{
     font-family:Verdana, Geneva, Tahoma, sans-serif
@@ -19,11 +19,19 @@ html, body {
   height: 100%;
 }
 body {
-  background-image: url("background.png");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  min-height: 100vh;
+     background: linear-gradient(
+        135deg,
+        #ef9d9d 0%,    /* Red */
+        #f3d156 16.67%, /* Orange */
+        #ffff6e 33.33%, /* Yellow */
+        #ace6ac 50%,    /* Green */
+        #d2d2f6 66.67%, /* Blue */
+        #f7afd3 83.33%, /* Indigo */
+        #d697f0 100%    /* Violet */
+    );
+    background-attachment: fixed;
+    min-height: 100vh;
+  
 }
 .title {
   font-family: "Playfair", serif;
@@ -142,6 +150,7 @@ body {
     margin-bottom: 20px;
     margin-left: 20px;
     margin-right: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 h2{
@@ -191,7 +200,8 @@ button:hover{
             max-height: 400px;
             overflow-y: auto;
             margin-bottom: 15px;
-            border: 1px solid #ddd;
+            margin-right:20px;
+            border: 3px solid #e0dbdb;
             padding: 10px;
             border-radius: 5px;
             background-color: rgba(255, 255, 255, 0.8);
@@ -216,6 +226,7 @@ button:hover{
     margin-left: 20px;
     margin-right: 20px;
     max-width: 300px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 input, textarea{
     padding: 10px;
