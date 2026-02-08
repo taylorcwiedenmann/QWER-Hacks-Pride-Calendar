@@ -19,40 +19,77 @@
     <main>
         <h2>Submit a Pride Event</h2>
         <form id="event-form">
-            <label>Event Name:</label>
-            <br></br>
-            <input type="text" id="event-name" required>
+
+            <div>
+                <label>Event Name:</label>
+                <br></br>
+                <input type="text" id="event-name" required>
+            </div>
             <br></br>
 
-            <label>Date:</label>
-            <br></br>
-            <input type="date" id="event-date" required>
-            <br></br>
-
-            <label>Start Time:</label>
-            <br></br>
-            <input type="time" id="event-start-time" required>
+            <div>
+                <label>Date:</label>
+                <br></br>
+                <input type="date" id="event-date" required>
+            </div>
             <br></br>
 
-            <label>End Time:</label>
-            <br></br>
-            <input type="time" id="event-end-time" required>
-            <br></br>
-
-            <label>Location/Address:</label>
-            <br></br>
-            <input type="text" id="event-location" required>
+            <div>
+                <label>Start Time:</label>
+                <br></br>
+                <input type="time" id="event-start-time" required>
+            </div>
             <br></br>
 
-            <label>Description:</label>
+            <div>
+                <label>End Time:</label>
+                <br></br>
+                <input type="time" id="event-end-time" required>
+            </div>
             <br></br>
-            <textarea id="event-description" rows="4" ></textarea>
 
+            <div>
+                 <label>Description:</label>
+                <br></br>
+                <textarea id="event-description" rows="4" ></textarea>
+            </div>
+            <br></br>
+
+            <div>
+                <label>Location/Address:</label>
+                <br></br>
+                <input type="text" id="event-location" required>
+            </div>
+            
+            <br></br>
+            <!--
+            
+            <div>
+                <p>Click on map or search for a location</p>
+            
+                
+                <input id="searchBox" type="text" placeholder="Search location...">
+            
+                
+                <div id="map" style="width: 100%; height: 400px;"></div>
+
+                
+                <div id="locationInfo" style="display: none;">
+                    <p>Address: <span id="addressText"></span></p>
+                    <p>Lat: <span id="latText"></span></p>
+                    <p>Lng: <span id="lngText"></span></p>
+                </div>
+            </div>
+            -->
+
+           
             <button type="submit">Submit Event</button>
         </form>
-        <div id="message"></div>
+        
     </main>
-
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&callback=initMap" async defer></script>
+    
     <script src="submit.js"></script>
 </body>
 </html>

@@ -11,7 +11,7 @@ class Event{
 
 }
 const form = document.getElementById("event-form");
-//const message = document.getElementById("message");
+const map = document.getElementById("map");
 
 form.addEventListener('submit', async function(e){
     e.preventDefault(); 

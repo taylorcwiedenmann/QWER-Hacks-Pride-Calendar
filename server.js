@@ -1,22 +1,29 @@
 require("dotenv").config();
 
+const { auth, google } = require('./auth'); 
 const express = require("express");
 const path = require("path");
-const { google } = require("googleapis");
+//const { google } = require("googleapis");
+const eventRoutes = require('./routes');
+
+
 
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "Public")));
+app.use('/api/events', eventRoutes);
+
 
 
 // Google auth
+/*
 const auth = new google.auth.GoogleAuth({
   keyFile: process.env.GOOGLE_KEYFILE,
   scopes: ["https://www.googleapis.com/auth/calendar"]
 });
-
+*/
 async function insertToCalendar(eventToAdd) {
   const client = await auth.getClient();
   const calendar = google.calendar({ version: "v3", auth: client });
@@ -116,5 +123,43 @@ app.post("/api/admin/delete", async (req, res) => {
   }
 });
 
+
+
+async function getUpcomingEvents(limit = 3) {
+  try {
+    const now = new Date().toISOString();
+    
+    const client = await auth.getClient();
+    const calendar = google.calendar({ version: "v3", auth: client });
+    
+    const res = await calendar.events.list({
+      calendarId: process.env.CALENDAR_ID,
+      timeMin: now,
+      maxResults: limit,
+      singleEvents: true,
+      orderBy: 'startTime',
+    });
+
+    const events = res.data.items;
+
+    return events.map(event => ({
+      name: event.summary,
+      description: event.description || '',
+      date: event.start.date || event.start.dateTime,
+      start_time: event.start.dateTime,
+      end_time: event.end.dateTime,
+      location: event.location || '',
+      htmlLink: event.htmlLink
+    }));
+
+  } catch (error) {
+    console.error('Error fetching calendar events:', error);
+    throw new Error('Failed to fetch calendar events');
+  }
+}
+
+module.exports = { getUpcomingEvents };
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+//module.exports = { auth };
