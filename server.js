@@ -1,13 +1,11 @@
 require("dotenv").config();
 
 const cors = require('cors');
-const cron = require('node-cron');
 const express = require("express");
 const path = require("path");
 const { google } = require("googleapis");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const { getPrideEvents } = require('./getPrideEvents'); // Only need this one import
 
 console.log("GOOGLE_KEYFILE:", process.env.GOOGLE_KEYFILE ? "Loaded" : "Not loaded");
 console.log("CALENDAR_ID:", process.env.CALENDAR_ID ? "Loaded" : "Not loaded");
@@ -19,11 +17,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "Public")));
 app.use(cors());
-
-
-// Cache to store events
-let cachedPrideEvents = [];
-
 
 // Google auth
 const auth = new google.auth.GoogleAuth({
@@ -53,6 +46,7 @@ function toPSTParts(dateTimeStr) {
   return { date, time };
 }
 
+
 async function insertToCalendar(eventToAdd) {
   const client = await auth.getClient();
   const calendar = google.calendar({ version: "v3", auth: client });
@@ -72,6 +66,85 @@ async function deleteFromCalendar(googleEventId) {
     eventId: googleEventId
   });
 }
+
+app.get("/ping", function (req, res) {
+  res.send("ok");
+});
+
+
+// submit -> directly creates event on Google Calendar
+app.post("/api/events/submit", async function (req, res) {
+  try {
+    const title = req.body.name;
+    const description = req.body.description;
+    const location = req.body.location;
+    const start_time = req.body.start_time;
+    const end_time = req.body.end_time;
+    const date = req.body.date;
+    const start = `${date}T${start_time}:00`;
+    const end = `${date}T${end_time}:00`;
+
+    // basic validation & sanitization
+    if (!title || !start || !end) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "title, start, and end required" });
+    }
+
+    if (title.length > 200) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "title too long" });
+    }
+
+    // build Google event resource
+    const eventResource = {
+      summary: title,
+      description: description || "",
+      location: location || "",
+      start: { dateTime: new Date(start).toISOString() },
+      end: { dateTime: new Date(end).toISOString() }
+    };
+
+    // Insert
+    const gEvent = await insertToCalendar(eventResource);
+
+    // Log the google event id (server logs) so admin can delete if needed
+    console.log("Created Google event:", gEvent.id, gEvent.htmlLink);
+
+    // Return event id to caller
+    res.json({
+      ok: true,
+      googleEventId: gEvent.id,
+      htmlLink: gEvent.htmlLink
+    });
+  } catch (err) {
+    console.error("Insert error:", err && err.message ? err.message : err);
+    res
+      .status(500)
+      .json({ ok: false, error: "failed to create event" });
+  }
+});
+
+// admin-only: delete event by Google event id
+app.post("/api/admin/delete", async (req, res) => {
+  const token = req.get("x-admin-token");
+  if (!token || token !== process.env.ADMIN_TOKEN) {
+    return res.status(401).json({ ok: false, error: "unauthorized" });
+  }
+
+  const { googleEventId } = req.body;
+  if (!googleEventId) return res.status(400).json({ ok: false, error: "googleEventId required" });
+
+  try {
+    await deleteFromCalendar(googleEventId);
+    console.log("Deleted Google event:", googleEventId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Delete error:", err?.message || err);
+    res.status(500).json({ ok: false, error: "failed to delete event" });
+  }
+});
 
 async function fetchUpcomingEvents({ days = 30 } = {}) {
   const client = await auth.getClient();
@@ -111,25 +184,11 @@ app.get("/ping", function (req, res) {
   res.send("ok");
 });
 
-
-
-// Scrape once at startup
-getPrideEvents().then(events => {
-  cachedPrideEvents = events;
-  console.log(`Initial scrape: ${events.length} pride events cached`);
-});
-
-// Schedule daily at 3 AM
-cron.schedule('0 3 * * *', async () => {
-  console.log('Running daily Eventbrite scrape...');
-  cachedPrideEvents = await getPrideEvents();
-  console.log(`Updated cache: ${cachedPrideEvents.length} pride events`);
-});
-
-// Return cached events instead of scraping every request
+// Eventbrite events endpoint
 app.get('/api/events/eventbrite', async (req, res) => {
   try {
-    res.json(cachedPrideEvents);
+    const events = await getPrideEvents();
+    res.json(events);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -302,13 +361,9 @@ app.post("/api/admin/delete", async (req, res) => {
 app.get("/api/events/upcoming", async (req, res) => {
   try {
     const days = Math.min(parseInt(req.query.days || "30", 10), 180);
-    const limit = parseInt(req.query.limit || "3", 10);
     const events = await fetchUpcomingEvents({ days });
 
-    const limitedEvents = events.slice(0, limit);
-
-    res.json({ ok: true, events: limitedEvents });
-
+    res.json({ ok: true, events });
   } catch (err) {
     console.error("List events error:", err?.message || err);
     res.status(500).json({ ok: false, error: "failed to fetch events" });
@@ -327,7 +382,7 @@ app.post("/api/assistant/recommend", async (req, res) => {
     }
 
     const events = await fetchUpcomingEvents({ days: 30 });
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
     const prompt = `
 You are an event recommendation assistant. Your ONLY job is to:
@@ -396,6 +451,7 @@ Rules:
     res.status(500).json({ ok: false, error: "assistant failed" });
   }
 });
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
