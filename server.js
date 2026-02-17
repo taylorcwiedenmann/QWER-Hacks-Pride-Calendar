@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const cors = require('cors');
+const cron = require('node-cron');
 const express = require("express");
 const path = require("path");
 const { google } = require("googleapis");
@@ -18,6 +19,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "Public")));
 app.use(cors());
+
+
+// Cache to store events
+let cachedPrideEvents = [];
+
 
 // Google auth
 const auth = new google.auth.GoogleAuth({
@@ -105,11 +111,25 @@ app.get("/ping", function (req, res) {
   res.send("ok");
 });
 
-// Eventbrite events endpoint
+
+
+// Scrape once at startup
+getPrideEvents().then(events => {
+  cachedPrideEvents = events;
+  console.log(`Initial scrape: ${events.length} pride events cached`);
+});
+
+// Schedule daily at 3 AM
+cron.schedule('0 3 * * *', async () => {
+  console.log('Running daily Eventbrite scrape...');
+  cachedPrideEvents = await getPrideEvents();
+  console.log(`Updated cache: ${cachedPrideEvents.length} pride events`);
+});
+
+// Return cached events instead of scraping every request
 app.get('/api/events/eventbrite', async (req, res) => {
   try {
-    const events = await getPrideEvents();
-    res.json(events);
+    res.json(cachedPrideEvents);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -307,7 +327,7 @@ app.post("/api/assistant/recommend", async (req, res) => {
     }
 
     const events = await fetchUpcomingEvents({ days: 30 });
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `
 You are an event recommendation assistant. Your ONLY job is to:
